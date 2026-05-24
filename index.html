@@ -343,6 +343,13 @@ function flipCard() {
   flipped = !flipped;
 }
 
+function navigate(dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= deck.length) return;
+  idx = newIdx;
+  showCard();
+}
+
 function rate(correct) {
   if (correct) {
     known++;
@@ -407,13 +414,6 @@ function reviewWrong() {
   document.getElementById('scene').style.display = '';
   document.getElementById('controls').style.display = '';
   document.getElementById('counter').style.display = '';
-  showCard();
-}
-
-function navigate(dir) {
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= deck.length) return;
-  idx = newIdx;
   showCard();
 }
 
