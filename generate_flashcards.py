@@ -1,4 +1,32 @@
-<!DOCTYPE html>
+import csv
+import json
+import sys
+import re
+import os
+
+def is_header_row(row):
+    q, a = row[0].strip().lower(), row[1].strip().lower()
+    header_keywords = {"question", "answer", "q", "a", "front", "back", "term", "definition"}
+    return q in header_keywords or a in header_keywords
+
+def load_cards(csv_path):
+    cards = []
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for i, row in enumerate(reader):
+            if len(row) < 2:
+                continue
+            if i == 0 and is_header_row(row):
+                continue
+            q = row[0].strip()
+            a = row[1].strip()
+            if q and a:
+                cards.append({"q": q, "a": a})
+    return cards
+
+def build_html(cards):
+    cards_json = json.dumps(cards, ensure_ascii=False)
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -6,9 +34,9 @@
 <title>Flashcards</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
-  :root {
+  :root {{
     --bg: #0f0f13;
     --surface: #1a1a22;
     --surface2: #22222e;
@@ -24,9 +52,9 @@
     --amber: #fbbf24;
     --radius: 16px;
     --card-h: clamp(240px, 45vw, 380px);
-  }
+  }}
 
-  body {
+  body {{
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -36,71 +64,71 @@
     align-items: center;
     padding: 1.5rem 1rem 3rem;
     gap: 1.5rem;
-  }
+  }}
 
-  header {
+  header {{
     width: 100%;
     max-width: 680px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
+  }}
 
-  .logo { font-size: 15px; font-weight: 600; color: var(--accent2); letter-spacing: -0.02em; }
+  .logo {{ font-size: 15px; font-weight: 600; color: var(--accent2); letter-spacing: -0.02em; }}
 
-  .stats {
+  .stats {{
     display: flex;
     gap: 1.5rem;
     font-size: 13px;
     color: var(--text2);
-  }
-  .stats span { display: flex; align-items: center; gap: 5px; }
-  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-  .dot-green { background: var(--green); }
-  .dot-red { background: var(--red); }
+  }}
+  .stats span {{ display: flex; align-items: center; gap: 5px; }}
+  .dot {{ width: 7px; height: 7px; border-radius: 50%; display: inline-block; }}
+  .dot-green {{ background: var(--green); }}
+  .dot-red {{ background: var(--red); }}
 
-  .progress-bar {
+  .progress-bar {{
     width: 100%;
     max-width: 680px;
     height: 3px;
     background: var(--surface2);
     border-radius: 99px;
     overflow: hidden;
-  }
-  .progress-fill {
+  }}
+  .progress-fill {{
     height: 100%;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     border-radius: 99px;
     transition: width 0.4s cubic-bezier(.4,0,.2,1);
-  }
+  }}
 
-  .counter {
+  .counter {{
     font-size: 13px;
     color: var(--text3);
     width: 100%;
     max-width: 680px;
     text-align: right;
-  }
+  }}
 
-  .scene {
+  .scene {{
     width: 100%;
     max-width: 680px;
     height: var(--card-h);
     perspective: 1200px;
     cursor: pointer;
-  }
+  }}
 
-  .card {
+  .card {{
     width: 100%;
     height: 100%;
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.55s cubic-bezier(.4,0,.2,1);
-  }
+  }}
 
-  .card.flipped { transform: rotateY(180deg); }
+  .card.flipped {{ transform: rotateY(180deg); }}
 
-  .face {
+  .face {{
     position: absolute;
     inset: 0;
     backface-visibility: hidden;
@@ -116,25 +144,25 @@
     text-align: center;
     gap: 1rem;
     overflow: hidden;
-  }
+  }}
 
-  .face::before {
+  .face::before {{
     content: '';
     position: absolute;
     inset: 0;
     background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(124,106,247,0.08), transparent);
     pointer-events: none;
-  }
+  }}
 
-  .face-back {
+  .face-back {{
     transform: rotateY(180deg);
     background: var(--surface2);
-  }
-  .face-back::before {
+  }}
+  .face-back::before {{
     background: radial-gradient(ellipse 60% 40% at 50% 100%, rgba(62,207,142,0.07), transparent);
-  }
+  }}
 
-  .face-label {
+  .face-label {{
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -143,34 +171,34 @@
     position: absolute;
     top: 1.25rem;
     left: 1.5rem;
-  }
+  }}
 
-  .face-text {
+  .face-text {{
     font-size: clamp(14px, 2.5vw, 18px);
     line-height: 1.65;
     color: var(--text);
     max-height: calc(var(--card-h) - 5rem);
     overflow-y: auto;
     scrollbar-width: none;
-  }
+  }}
 
-  .hint {
+  .hint {{
     font-size: 12px;
     color: var(--text3);
     position: absolute;
     bottom: 1.25rem;
     right: 1.5rem;
-  }
+  }}
 
-  .controls {
+  .controls {{
     display: flex;
     gap: 0.75rem;
     width: 100%;
     max-width: 680px;
     justify-content: center;
-  }
+  }}
 
-  .btn {
+  .btn {{
     display: flex;
     align-items: center;
     justify-content: center;
@@ -185,32 +213,32 @@
     cursor: pointer;
     transition: background 0.15s, color 0.15s, transform 0.1s;
     white-space: nowrap;
-  }
-  .btn:hover { background: var(--surface2); color: var(--text); }
-  .btn:active { transform: scale(0.97); }
+  }}
+  .btn:hover {{ background: var(--surface2); color: var(--text); }}
+  .btn:active {{ transform: scale(0.97); }}
 
-  .btn-know {
+  .btn-know {{
     flex: 1;
     background: rgba(62,207,142,0.1);
     border-color: rgba(62,207,142,0.25);
     color: var(--green);
-  }
-  .btn-know:hover { background: rgba(62,207,142,0.18); }
+  }}
+  .btn-know:hover {{ background: rgba(62,207,142,0.18); }}
 
-  .btn-nope {
+  .btn-nope {{
     flex: 1;
     background: rgba(248,113,113,0.1);
     border-color: rgba(248,113,113,0.25);
     color: var(--red);
-  }
-  .btn-nope:hover { background: rgba(248,113,113,0.18); }
+  }}
+  .btn-nope:hover {{ background: rgba(248,113,113,0.18); }}
 
-  .btn-shuffle, .btn-restart {
+  .btn-shuffle, .btn-restart {{
     background: transparent;
     border-color: var(--border);
-  }
+  }}
 
-  .result-screen {
+  .result-screen {{
     display: none;
     flex-direction: column;
     align-items: center;
@@ -223,34 +251,34 @@
     border-radius: var(--radius);
     padding: 3rem 2rem;
     text-align: center;
-  }
-  .result-screen.visible { display: flex; }
+  }}
+  .result-screen.visible {{ display: flex; }}
 
-  .result-big { font-size: 48px; font-weight: 700; letter-spacing: -0.03em; }
-  .result-sub { font-size: 15px; color: var(--text2); }
+  .result-big {{ font-size: 48px; font-weight: 700; letter-spacing: -0.03em; }}
+  .result-sub {{ font-size: 15px; color: var(--text2); }}
 
-  .result-grid {
+  .result-grid {{
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
     width: 100%;
     max-width: 320px;
-  }
+  }}
 
-  .result-stat {
+  .result-stat {{
     background: var(--surface2);
     border-radius: 10px;
     padding: 1rem;
     font-size: 13px;
     color: var(--text2);
-  }
-  .result-stat strong { display: block; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  }}
+  .result-stat strong {{ display: block; font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 2px; }}
 
-  @media (max-width: 480px) {
-    body { padding: 1rem 0.75rem 2rem; }
-    .face { padding: 1.5rem 1.25rem; }
-    .btn { padding: 0.6rem 0.9rem; font-size: 12px; }
-  }
+  @media (max-width: 480px) {{
+    body {{ padding: 1rem 0.75rem 2rem; }}
+    .face {{ padding: 1.5rem 1.25rem; }}
+    .btn {{ padding: 0.6rem 0.9rem; font-size: 12px; }}
+  }}
 </style>
 </head>
 <body>
@@ -264,7 +292,7 @@
 </header>
 
 <div class="progress-bar"><div class="progress-fill" id="progress" style="width:0%"></div></div>
-<div class="counter" id="counter">1 / 112</div>
+<div class="counter" id="counter">1 / {len(cards)}</div>
 
 <div class="scene" id="scene">
   <div class="card" id="card">
@@ -301,7 +329,7 @@
 </div>
 
 <script>
-const CARDS = [{"q": "What does the abbreviation 'AC' stand for in a medical prescription?", "a": "Before meal."}, {"q": "What does the abbreviation 'PC' stand for in a medical prescription?", "a": "After meal."}, {"q": "Which medical abbreviation is noted as a 'Dangerous abbreviation' meaning 'as needed'?", "a": "PRN."}, {"q": "The abbreviation 'HS - BT' indicates that a medication should be taken _____.", "a": "At bedtime."}, {"q": "What are the meanings of the abbreviations 'PO' and 'PR' regarding administration routes?", "a": "By oral and By rectum."}, {"q": "What is the meaning of the frequency abbreviations 'BID', 'TID', and 'QID'?", "a": "Twice a day, Thrice a day, and Four times a day."}, {"q": "What does the abbreviation 'QOD' stand for?", "a": "Every other day."}, {"q": "What does the abbreviation 'Q4H' indicate?", "a": "Every 4 hours."}, {"q": "The abbreviations 'BBF' and 'BD' stand for which meal-related timings?", "a": "Before breakfast and Before dinner."}, {"q": "What is the metric equivalent of one teaspoonful (TSF)?", "a": "$5 ml$."}, {"q": "Which antidote is used for toxicity caused by Anticholinergics like Atropine?", "a": "Physostigmine."}, {"q": "What is the specific antidote for Isoniazid (INH) induced toxicity?", "a": "Vitamin $B_{6}$ (Pyridoxine)."}, {"q": "Which agent is the antidote for Valproic acid toxicity?", "a": "L-carnitine."}, {"q": "What is the antidote for Methotrexate (MTX)?", "a": "Leucovorin."}, {"q": "Which agent is used to treat Methemoglobinemia induced by Nitrites or Nitrates?", "a": "Methylene blue."}, {"q": "What are the two specific antidotes listed for Digoxin toxicity?", "a": "Digibind and Digifab."}, {"q": "Which hormone is used as an antidote for Beta blocker overdose?", "a": "Glucagon."}, {"q": "What is the primary antidote for Opioid overdose (Morphine, Heroin, Fentanyl)?", "a": "Naloxone."}, {"q": "Which agent acts as the antidote for Benzodiazepines like Diazepam?", "a": "Flumazenil."}, {"q": "What is the antidote for Tricyclic Antidepressant (TCA) toxicity?", "a": "Sodium bicarbonate."}, {"q": "Which vitamin is the antidote for Warfarin?", "a": "Vitamin $K_{1}$ (Phyto-menadione)."}, {"q": "What is the specific antidote for Heparin?", "a": "Protamine sulfate."}, {"q": "Which specific agent is the antidote for the anticoagulant Dabigatran?", "a": "Idarucizumab."}, {"q": "Which two agents can be used as antidotes for Thrombolytics like Streptokinase?", "a": "Aminocaproic acid and Tranexamic acid."}, {"q": "What is the treatment sequence for poisoning by Nerve gases or Organophosphorus insecticides?", "a": "Atropine followed by Pralidoxime (2-PAM)."}, {"q": "What are the components of the 'Cyanide antidote kit' listed in the source?", "a": "Sodium thiosulfate, Amyl nitrite, and Na nitrite."}, {"q": "What is the specific antidote for Methanol and Ethylene glycol poisoning?", "a": "Ethanol or Fomepizole."}, {"q": "Which chelating agent is the antidote for Iron (Fe) toxicity?", "a": "Deferoxamine."}, {"q": "What is the antidote for Thallium poisoning?", "a": "Prussian blue."}, {"q": "Which agent is the antidote for Paracetamol (Acetaminophen) overdose?", "a": "N-Acetyl cysteine (NAC)."}, {"q": "What treatment is used for Aspirin (Salicylic acid) toxicity?", "a": "Alkalinization with $NaHCO_{3}$."}, {"q": "What is the antidote for Sulfonylurea-induced hypoglycemia?", "a": "Octreotide."}, {"q": "Which medication is used to control high phosphorus levels in patients with chronic kidney disease on dialysis?", "a": "Sevelamer."}, {"q": "List the 10 essential amino acids using the provided mnemonic 'I Love Lucy...'.", "a": "Isoleucine, Lysine, Leucine, Valine, Methionine, Phenylalanine, Tryptophan, Threonine, Histidine, Arginine."}, {"q": "Which two amino acids are involved in conjugation in the liver?", "a": "Glycine and Taurine."}, {"q": "What four amino acids are considered the best for producing keratin in hair and nails?", "a": "Cysteine, Lysine, Arginine, and Methionine."}, {"q": "List the two essential fatty acids provided in the source.", "a": "Linolenic acid and Linoleic acid."}, {"q": "Classify Glucose, Galactose, and Fructose.", "a": "Monosaccharides."}, {"q": "Classify Sucrose, Maltose, and Lactose.", "a": "Disaccharides."}, {"q": "Classify Starch, Glycogen, and Cellulose.", "a": "Polysaccharides."}, {"q": "In the classification of adverse drug reactions, what does Type A (Augmented) signify?", "a": "Common, predictable, and dose-related reactions related to pharmacological action."}, {"q": "How is a Type B (Bizarre) adverse drug reaction managed?", "a": "Withhold the drug and avoid it in the future."}, {"q": "What is the primary feature of Type C (Chronic) adverse drug reactions?", "a": "They are related to cumulative dose and time."}, {"q": "Give three examples of Type D (Delayed) adverse drug reactions.", "a": "Teratogenicity, Carcinogenesis, and Tardive dyskinesia."}, {"q": "Type E adverse drug reactions occur soon after the _____ of a drug.", "a": "Withdrawal."}, {"q": "Type F (Failure) adverse drug reactions are often caused by _____.", "a": "Drug interactions."}, {"q": "In the AHA Heart Failure classification, what defines Stage C?", "a": "Structural heart disease with symptoms."}, {"q": "In the NYHA classification, how is Class 4 heart failure defined regarding exercise?", "a": "Symptoms present with no exercise (at rest)."}, {"q": "What is the equivalent dose of Prednisone compared to $25 mg$ of Cortisone?", "a": "$5 mg$."}, {"q": "Which two glucocorticoids have the lowest equivalent dose ($0.75 mg$)?", "a": "Betamethasone and Dexamethasone."}, {"q": "What is the equivalent dose of Methylprednisolone compared to $20 mg$ of Hydrocortisone?", "a": "$4 mg$."}, {"q": "What is the definition of a primary drug information resource?", "a": "First-hand information consisting of an author's own account of original research."}, {"q": "Provide three examples of secondary drug information resources.", "a": "Medline (PubMed), Google Scholar, and Iowa Drug Information Service (IDIS)."}, {"q": "What is the main disadvantage of tertiary drug information resources?", "a": "Lag time between publication and the inclusion of information."}, {"q": "Which textbook is the gold standard for adverse drug reactions?", "a": "Meyler's Side Effects of Drugs."}, {"q": "Which resource should be consulted for IV medication compatibility and stability?", "a": "Handbook of Injectable Drugs (Trissel's)."}, {"q": "What is the preferred resource for identifying drugs manufactured in foreign countries?", "a": "Martindale: The Complete Drug Reference."}, {"q": "Which database is used for the identification of unknown pills based on imprint codes?", "a": "Identidex or Lexi-drug ID."}, {"q": "What does the FDA Orange Book provide?", "a": "A list of approved drug products and their therapeutic equivalence/interchangeability."}, {"q": "Which CDC resource provides information on epidemiology and vaccine-preventable diseases?", "a": "Pink Book."}, {"q": "What information is found in the FDA Purple Book?", "a": "Lists of biological drug products and biosimilar indicators."}, {"q": "In Pharmacy (Micromedex), what is the primary purpose of the Red Book?", "a": "Providing drug pricing information."}, {"q": "Which resource is used for health information regarding international travel and vaccinations?", "a": "CDC Yellow Book."}, {"q": "Which three medications are preferred for treating hypertension during pregnancy?", "a": "Methyldopa, Labetalol, and Hydralazine."}, {"q": "What is the drug of choice for gestational diabetes?", "a": "Insulin."}, {"q": "Why is Warfarin contraindicated (Category X) in pregnancy?", "a": "It causes cranial facial abnormalities and nasal bone hypoplasia."}, {"q": "Which antibiotic is recommended for a UTI in a pregnant patient with G6PD deficiency?", "a": "Cefuroxime."}, {"q": "What is the maintenance dose range for Thyroid Hormone in pregnancy?", "a": "$1.0 - 2.0 \\mu g/kg/day$."}, {"q": "What is the ethical principle of Autonomy?", "a": "The right of individuals to self-rule and make decisions about their own bodies."}, {"q": "Define the ethical principle of Beneficence.", "a": "The duty to do good and benefit the patient."}, {"q": "What does the ethical principle of Non-maleficence entail?", "a": "The prevention of harm and the removal of harmful conditions."}, {"q": "What is the difference between Ethics and Law according to the source?", "a": "Ethics are unenforceable norms and values, while Laws are enforceable standards behavior."}, {"q": "What is the 'Harm Principle' in the context of autonomy exceptions?", "a": "Intervening when an individual's decision will cause harm to themselves."}, {"q": "Define Veracity in a professional medical context.", "a": "The requirement to be honest and tell the truth to patients."}, {"q": "What is the difference between Covenantal and Contractual fidelity?", "a": "Covenantal is a spiritual/intimate commitment, while Contractual is a binding agreement like a business arrangement."}, {"q": "What are 'Macro ethical issues'?", "a": "Socially controversial issues not specific to one pharmacist, such as abortion or assisted suicide."}, {"q": "What is the primary role of an Institutional Review Board (IRB)?", "a": "To protect the rights and welfare of human subjects in clinical experiments."}, {"q": "How long does the DEA require pharmacies to keep controlled substance records?", "a": "At least two years."}, {"q": "Define a 'Hapten' in immunology.", "a": "A small molecule that induces an immune response only when coupled to a carrier protein."}, {"q": "List three components of the body's '1st line defense' in immunity.", "a": "Skin, Cilia, and Mucous membranes."}, {"q": "Where does T-cell maturation occur?", "a": "Bone marrow (origin) and Thymus gland (maturation/storage)."}, {"q": "Which immunoglobulin is the only one that can pass through the placenta?", "a": "IgG."}, {"q": "Which immunoglobulin is found in high concentrations in breast milk (colostrum)?", "a": "IgA."}, {"q": "Which immunoglobulin is the first to respond during a primary immune response?", "a": "IgM."}, {"q": "Type 1 hypersensitivity reactions are mediated by which humoral component?", "a": "IgE."}, {"q": "What is an example of a Type 4 (Delayed) hypersensitivity reaction?", "a": "Graft rejection or Contact Dermatitis."}, {"q": "What are the five levels of Maslow's Hierarchy of Needs from bottom to top?", "a": "Physiological, Safety, Love/Belonging, Esteem, and Self-Actualization."}, {"q": "In medication errors, what is an 'Omission error'?", "a": "When a patient does not receive a scheduled dose of medication."}, {"q": "What is the most common error in the medication use process?", "a": "Wrong time error."}, {"q": "Define 'Medication Reconciliation'.", "a": "The process of comparing a patient's medication orders to all medications they have been taking."}, {"q": "In the NCC MERP index, what does Category B signify?", "a": "An error occurred but did not reach the patient."}, {"q": "Which NCC MERP category describes an error that reached the patient and caused temporary harm requiring intervention?", "a": "Category E."}, {"q": "Compare the peptidoglycan layer thickness in Gram (+) vs Gram (-) bacteria.", "a": "Gram (+) is thick ($20-80 nm$) while Gram (-) is thin ($2-3 nm$)."}, {"q": "Which type of bacteria contains Lipopolysaccharides and an outer membrane?", "a": "Gram (-) bacteria."}, {"q": "What color do Gram (+) bacteria appear after staining, and why?", "a": "Dark violet, because their thick peptidoglycan retains the crystal violet dye."}, {"q": "Describe the shape of 'Vibrio' bacteria.", "a": "Comma-like shape or curved rods."}, {"q": "Which specific bacterium is arranged in 'grape-like clusters'?", "a": "Staphylococcus aureus."}, {"q": "Classify bacteria that grow best between $25^{\\circ}C$ and $40^{\\circ}C$.", "a": "Mesophiles."}, {"q": "What are 'Obligate anaerobes'?", "a": "Bacteria that grow only in the absence of $O_{2}$."}, {"q": "Which test distinguishes Staphylococcus from Streptococcus?", "a": "The Catalase test (Staph is +ve, Strep is -ve)."}, {"q": "Which test differentiates Staphylococcus aureus from other Staphylococci?", "a": "The Coagulase test (S. aureus is +ve)."}, {"q": "What are the three types of hemolysis used to classify Streptococcus?", "a": "Alpha (partial), Beta (complete), and Gamma (none)."}, {"q": "Using the 'SHINE K' mnemonic, list the encapsulated bacteria.", "a": "S. Pneumonia, S. group B, Salmonella typhi, H. influenza, Neisseria meningitides, E. Coli, Klebsiella."}, {"q": "In the Kirby-Bauer Disk Diffusion Method, what does a larger circle (zone of inhibition) indicate?", "a": "Greater sensitivity/susceptibility of the bacteria to the antibiotic."}, {"q": "What is the pathogen responsible for the Plague?", "a": "Yersinia pestis."}, {"q": "Define 'Direct non-medical costs' in pharmacoeconomics and give an example.", "a": "Patient expenses not for medical care, such as transportation or child care."}, {"q": "What are 'Intangible costs' in healthcare?", "a": "Non-monetary costs like pain, suffering, anxiety, and grief."}, {"q": "Define 'Opportunity cost' in an economic context.", "a": "The economic benefit forgone when choosing one therapy over the next best alternative."}, {"q": "Which pharmacoeconomic analysis model measures outcomes in monetary units (dollars)?", "a": "Cost Benefit Analysis (CBA)."}, {"q": "What is the outcome measurement unit for Cost Utility Analysis (CUA)?", "a": "Quality Adjusted Life Year (QALY)."}, {"q": "Under what condition can a Cost Minimization Analysis (CMA) be performed?", "a": "When two interventions are proven to have equivalent therapeutic outcomes."}, {"q": "What formula is used to calculate the Incremental Cost-Effectiveness Ratio (ICER)?", "a": "$\\frac{Cost A - Cost B}{Effect A - Effect B}$."}];
+const CARDS = {cards_json};
 
 let deck = [...CARDS];
 let idx = 0;
@@ -312,19 +340,19 @@ let streak = 0;
 let bestStreak = 0;
 let wrongCards = [];
 
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
+function shuffle(arr) {{
+  for (let i = arr.length - 1; i > 0; i--) {{
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
+  }}
   return arr;
-}
+}}
 
-function renderMath(el) {
+function renderMath(el) {{
   if (window.MathJax) MathJax.typesetPromise([el]);
-}
+}}
 
-function showCard() {
+function showCard() {{
   const c = deck[idx];
   document.getElementById('q-text').textContent = c.q;
   document.getElementById('a-text').textContent = c.a;
@@ -335,42 +363,35 @@ function showCard() {
   const card = document.getElementById('card');
   card.classList.remove('flipped');
   flipped = false;
-}
+}}
 
-function flipCard() {
+function flipCard() {{
   const card = document.getElementById('card');
   card.classList.toggle('flipped');
   flipped = !flipped;
-}
+}}
 
-function navigate(dir) {
-  const newIdx = idx + dir;
-  if (newIdx < 0 || newIdx >= deck.length) return;
-  idx = newIdx;
-  showCard();
-}
-
-function rate(correct) {
-  if (correct) {
+function rate(correct) {{
+  if (correct) {{
     known++;
     streak++;
     if (streak > bestStreak) bestStreak = streak;
     document.getElementById('known-count').textContent = known;
-  } else {
+  }} else {{
     nope++;
     streak = 0;
     wrongCards.push(deck[idx]);
     document.getElementById('nope-count').textContent = nope;
-  }
+  }}
   idx++;
-  if (idx >= deck.length) {
+  if (idx >= deck.length) {{
     showResult();
-  } else {
+  }} else {{
     showCard();
-  }
-}
+  }}
+}}
 
-function showResult() {
+function showResult() {{
   document.getElementById('scene').style.display = 'none';
   document.getElementById('controls').style.display = 'none';
   document.getElementById('counter').style.display = 'none';
@@ -384,9 +405,9 @@ function showResult() {
   document.getElementById('r-streak').textContent = bestStreak;
   document.getElementById('review-wrong-btn').style.display = wrongCards.length ? '' : 'none';
   document.getElementById('progress').style.width = '100%';
-}
+}}
 
-function restart() {
+function restart() {{
   deck = shuffle([...CARDS]);
   idx = 0; known = 0; nope = 0; streak = 0; bestStreak = 0; wrongCards = [];
   document.getElementById('known-count').textContent = 0;
@@ -396,16 +417,16 @@ function restart() {
   document.getElementById('controls').style.display = '';
   document.getElementById('counter').style.display = '';
   showCard();
-}
+}}
 
-function shuffleDeck() {
+function shuffleDeck() {{
   const rest = deck.slice(idx);
   shuffle(rest);
   deck = deck.slice(0, idx).concat(rest);
   showCard();
-}
+}}
 
-function reviewWrong() {
+function reviewWrong() {{
   deck = shuffle([...wrongCards]);
   idx = 0; known = 0; nope = 0; streak = 0; bestStreak = 0; wrongCards = [];
   document.getElementById('known-count').textContent = 0;
@@ -415,34 +436,56 @@ function reviewWrong() {
   document.getElementById('controls').style.display = '';
   document.getElementById('counter').style.display = '';
   showCard();
-}
+}}
 
-document.addEventListener('keydown', e => {
-  if (e.key === ' ') { e.preventDefault(); flipCard(); }
+function navigate(dir) {{
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= deck.length) return;
+  idx = newIdx;
+  showCard();
+}}
+
+document.addEventListener('keydown', e => {{
+  if (e.key === ' ') {{ e.preventDefault(); flipCard(); }}
   if (e.key === 'ArrowRight') navigate(1);
   if (e.key === 'ArrowLeft') navigate(-1);
-});
+}});
 
 const scene = document.getElementById('scene');
 let touchStartX = 0, touchStartY = 0, touchMoved = false;
-scene.addEventListener('touchstart', e => {
+scene.addEventListener('touchstart', e => {{
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
   touchMoved = false;
-}, { passive: true });
-scene.addEventListener('touchmove', e => {
+}}, {{ passive: true }});
+scene.addEventListener('touchmove', e => {{
   if (Math.abs(e.touches[0].clientX - touchStartX) > 8 || Math.abs(e.touches[0].clientY - touchStartY) > 8) touchMoved = true;
-}, { passive: true });
-scene.addEventListener('touchend', e => {
+}}, {{ passive: true }});
+scene.addEventListener('touchend', e => {{
   if (touchMoved) return;
   const rect = scene.getBoundingClientRect();
   const ratio = (touchStartX - rect.left) / rect.width;
   if (ratio < 0.3) navigate(-1);
   else if (ratio > 0.7) navigate(1);
   else flipCard();
-});
+}});
 
 showCard();
 </script>
 </body>
-</html>
+</html>"""
+
+if __name__ == "__main__":
+    csv_path = sys.argv[1] if len(sys.argv) > 1 else "flashcards.csv"
+    out_path = sys.argv[2] if len(sys.argv) > 2 else "index.html"
+    if not os.path.exists(csv_path):
+        print(f"Error: {csv_path} not found", file=sys.stderr)
+        sys.exit(1)
+    cards = load_cards(csv_path)
+    if not cards:
+        print("Error: no cards parsed from CSV", file=sys.stderr)
+        sys.exit(1)
+    html = build_html(cards)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"Generated {out_path} with {len(cards)} cards.")
